@@ -63,15 +63,21 @@ public class AudioProcessor {
     /// <returns>Exit code: 0 for success, non-zero for errors</returns>
     public int Process() {
         try {
-            Console.WriteLine("Initializing audio processing...");
+            if (!options.Quiet) {
+                Console.WriteLine("Initializing audio processing...");
+            }
             
             if (options.OutputFormat.IsEnvironmental()) {
                 PrepareRendererForEnvironmental();
-                Console.WriteLine("Processing audio...");
+                if (!options.Quiet) {
+                    Console.WriteLine("Processing audio...");
+                }
                 return ProcessEnvironmentalFormat();
             } else {
                 PrepareRenderer();
-                Console.WriteLine("Processing audio...");
+                if (!options.Quiet) {
+                    Console.WriteLine("Processing audio...");
+                }
                 return ProcessChannelBasedFormat();
             }
             
@@ -97,7 +103,9 @@ public class AudioProcessor {
         
         RenderAudio(writer);
         
-        Console.WriteLine("Processing completed successfully.");
+        if (!options.Quiet) {
+            Console.WriteLine("Processing completed successfully.");
+        }
         return 0;
     }
     
@@ -106,7 +114,9 @@ public class AudioProcessor {
     /// </summary>
     /// <returns>Exit code: 0 for success, non-zero for errors</returns>
     int ProcessEnvironmentalFormat() {
-        Console.WriteLine($"Processing as environmental format: {options.OutputFormat}");
+        if (!options.Quiet) {
+            Console.WriteLine($"Processing as environmental format: {options.OutputFormat}");
+        }
         
         var environmentWriter = CreateEnvironmentWriter();
         if (environmentWriter == null) {
@@ -117,7 +127,9 @@ public class AudioProcessor {
         try {
             RenderEnvironmentalAudio(environmentWriter);
             
-            Console.WriteLine("Environmental processing completed successfully.");
+            if (!options.Quiet) {
+                Console.WriteLine("Environmental processing completed successfully.");
+            }
             return 0;
         } finally {
             environmentWriter?.Dispose();
@@ -138,7 +150,9 @@ public class AudioProcessor {
                 VirtualizerFilter.SetupForSpeakers();
                 listener.SampleRate = VirtualizerFilter.FilterSampleRate;
             } catch (Exception ex) {
-                Console.WriteLine($"Warning: Could not setup virtualizer: {ex.Message}");
+                if (!options.Quiet) {
+                    Console.WriteLine($"Warning: Could not setup virtualizer: {ex.Message}");
+                }
             }
         }
     }
@@ -212,7 +226,9 @@ public class AudioProcessor {
                 VirtualizerFilter.SetupForSpeakers();
                 listener.SampleRate = VirtualizerFilter.FilterSampleRate;
             } catch (Exception ex) {
-                Console.WriteLine($"Warning: Could not setup virtualizer: {ex.Message}");
+                if (!options.Quiet) {
+                    Console.WriteLine($"Warning: Could not setup virtualizer: {ex.Message}");
+                }
             }
         }
         
@@ -228,7 +244,9 @@ public class AudioProcessor {
         
         listener.Volume = 1.0f;
         
-        Console.WriteLine($"Environmental format setup: {listener.ActiveSources.Count} sources, {Listener.Channels.Length} total channels");
+        if (!options.Quiet) {
+            Console.WriteLine($"Environmental format setup: {listener.ActiveSources.Count} sources, {Listener.Channels.Length} total channels");
+        }
     }
 
     /// <summary>
@@ -298,8 +316,10 @@ public class AudioProcessor {
         long renderedSamples = 0;
         int lastProgressPercent = -1;
         
-        Console.WriteLine($"Rendering environmental audio format: {options.OutputFormat}");
-        Console.WriteLine($"Total samples to process: {totalSamples}");
+        if (!options.Quiet) {
+            Console.WriteLine($"Rendering environmental audio format: {options.OutputFormat}");
+            Console.WriteLine($"Total samples to process: {totalSamples}");
+        }
         
         if (environmentWriter is BroadcastWaveFormatWriter bwfWriter) {
             RenderBroadcastWaveFormat(bwfWriter, totalSamples);
@@ -312,7 +332,7 @@ public class AudioProcessor {
             renderedSamples += listener.UpdateRate;
             
             int progressPercent = (int)((renderedSamples * 100) / totalSamples);
-            if (progressPercent != lastProgressPercent && progressPercent % 5 == 0) {
+            if (!options.Quiet && progressPercent != lastProgressPercent && progressPercent % 5 == 0) {
                 Console.WriteLine($"Progress: {progressPercent}%");
                 lastProgressPercent = progressPercent;
             }
@@ -322,8 +342,10 @@ public class AudioProcessor {
             }
         }
         
-        Console.WriteLine("Progress: 100%");
-        Console.WriteLine("Finalizing environmental format export...");
+        if (!options.Quiet) {
+            Console.WriteLine("Progress: 100%");
+            Console.WriteLine("Finalizing environmental format export...");
+        }
     }
     
     /// <summary>
@@ -332,7 +354,9 @@ public class AudioProcessor {
     /// <param name="bwfWriter">BWF writer instance</param>
     /// <param name="totalSamples">Total samples to process</param>
     void RenderBroadcastWaveFormat(BroadcastWaveFormatWriter bwfWriter, long totalSamples) {
-        Console.WriteLine("Rendering ADM BWF format with metadata generation...");
+        if (!options.Quiet) {
+            Console.WriteLine("Rendering ADM BWF format with metadata generation...");
+        }
         
         long renderedSamples = 0;
         int lastProgressPercent = -1;
@@ -352,7 +376,7 @@ public class AudioProcessor {
                 progressPercent = (int)(progressSplit * 100 + ((renderedSamples - audioProcessingSamples) * 5) / (totalSamples - audioProcessingSamples));
             }
             
-            if (progressPercent != lastProgressPercent && progressPercent % 5 == 0) {
+            if (!options.Quiet && progressPercent != lastProgressPercent && progressPercent % 5 == 0) {
                 Console.WriteLine($"Progress: {progressPercent}%");
                 lastProgressPercent = progressPercent;
             }
@@ -364,14 +388,16 @@ public class AudioProcessor {
         
         bwfWriter.FinalFeedback = (progress) => {
             int finalProgress = (int)(progressSplit * 100 + progress * 5);
-            if (finalProgress == 100) {
+            if (!options.Quiet && finalProgress == 100) {
                 Console.WriteLine("Progress: 100%");
                 Console.WriteLine("ADM metadata generation completed.");
             }
         };
         bwfWriter.FinalFeedbackStart = progressSplit;
         
-        Console.WriteLine("Finalizing ADM BWF format with metadata...");
+        if (!options.Quiet) {
+            Console.WriteLine("Finalizing ADM BWF format with metadata...");
+        }
     }
 
     /// <summary>
@@ -432,13 +458,15 @@ public class AudioProcessor {
             renderedSamples += listener.UpdateRate;
             
             int progressPercent = (int)((renderedSamples * 100) / totalSamples);
-            if (progressPercent != lastProgressPercent && progressPercent % 5 == 0) {
+            if (!options.Quiet && progressPercent != lastProgressPercent && progressPercent % 5 == 0) {
                 Console.WriteLine($"Progress: {progressPercent}%");
                 lastProgressPercent = progressPercent;
             }
         }
         
-        Console.WriteLine("Progress: 100%");
+        if (!options.Quiet) {
+            Console.WriteLine("Progress: 100%");
+        }
     }
 
     /// <summary>
@@ -470,4 +498,4 @@ public class AudioProcessor {
             source.Mute = shouldMuteBed || shouldMuteGround;
         }
     }
-} 
+}

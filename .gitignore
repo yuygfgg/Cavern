@@ -71,3 +71,4 @@ Tests/TestResults/
 packages/
 */.DS_Store
 .DS_Store
+.vscode/*

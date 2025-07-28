@@ -33,6 +33,7 @@ public class CommandParser {
         public bool Force24Bit { get; set; } = false;
         public bool ShowHelp { get; set; } = false;
         public bool ShowVersion { get; set; } = false;
+        public bool Quiet { get; set; } = false;
     }
 
     /// <summary>
@@ -171,6 +172,11 @@ public class CommandParser {
                     options.ShowVersion = true;
                     break;
 
+                case "-q":
+                case "--quiet":
+                    options.Quiet = true;
+                    break;
+
                 default:
                     throw new ArgumentException($"Unknown argument: {args[i]}");
             }
@@ -203,24 +209,26 @@ public class CommandParser {
     /// <param name="options">Processing options</param>
     /// <returns>Exit code</returns>
     int ProcessAudio(ProcessingOptions options) {
-        Console.WriteLine($"Processing: {options.InputFile} -> {options.OutputFile}");
-        Console.WriteLine($"Target Layout: {options.TargetLayout}");
-        Console.WriteLine($"Output Format: {options.OutputFormat}");
+        if (!options.Quiet) {
+            Console.WriteLine($"Processing: {options.InputFile} -> {options.OutputFile}");
+            Console.WriteLine($"Target Layout: {options.TargetLayout}");
+            Console.WriteLine($"Output Format: {options.OutputFormat}");
 
-        if (options.Upconvert) {
-            Console.WriteLine("- Upconversion enabled");
-        }
-        if (options.MuteBed) {
-            Console.WriteLine("- Bed channels muted");
-        }
-        if (options.MuteGround) {
-            Console.WriteLine("- Ground channels muted");
-        }
-        if (options.EnableVirtualizer) {
-            Console.WriteLine("- Speaker virtualizer enabled");
-        }
+            if (options.Upconvert) {
+                Console.WriteLine("- Upconversion enabled");
+            }
+            if (options.MuteBed) {
+                Console.WriteLine("- Bed channels muted");
+            }
+            if (options.MuteGround) {
+                Console.WriteLine("- Ground channels muted");
+            }
+            if (options.EnableVirtualizer) {
+                Console.WriteLine("- Speaker virtualizer enabled");
+            }
 
-        Console.WriteLine();
+            Console.WriteLine();
+        }
 
         var languageStrings = new TrackStrings();
 
@@ -238,10 +246,12 @@ public class CommandParser {
             return 1;
         }
 
-        Console.WriteLine($"Using track: {track.FormatHeader}");
-        Console.WriteLine($"Sample Rate: {track.SampleRate} Hz");
-        Console.WriteLine($"Length: {track.Length} samples");
-        Console.WriteLine();
+        if (!options.Quiet) {
+            Console.WriteLine($"Using track: {track.FormatHeader}");
+            Console.WriteLine($"Sample Rate: {track.SampleRate} Hz");
+            Console.WriteLine($"Length: {track.Length} samples");
+            Console.WriteLine();
+        }
 
         var processor = new AudioProcessor(track, options);
         return processor.Process();

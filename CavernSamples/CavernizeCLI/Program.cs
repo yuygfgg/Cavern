@@ -51,6 +51,7 @@ public static class Program {
         Console.WriteLine("  -f, --format <format>  Output format:");
         Console.WriteLine("                         Channel-based: WAV, EAC3, AC3, FLAC");
         Console.WriteLine("                         Object-based: ADM-BWF, ADM-BWF-ATMOS, LAF");
+        Console.WriteLine("  -q, --quiet            Suppress output messages (quiet mode)");
         Console.WriteLine("  -h, --help             Show help information");
         Console.WriteLine("  -v, --version          Show version information");
         Console.WriteLine();    
