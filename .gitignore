@@ -47,6 +47,8 @@ CavernSamples/WAVChannelReorderer/bin/
 CavernSamples/WAVChannelReorderer/obj/
 CavernSamples/WavefrontSimulator/bin/
 CavernSamples/WavefrontSimulator/obj/
+CavernSamples/CavernizeCLI/bin/
+CavernSamples/CavernizeCLI/obj/
 CavernUnity DLL/bin/
 CavernUnity DLL/obj/
 CavernUnity.WebGL/bin/
@@ -67,3 +69,5 @@ Tests/Test.CavernUnity/bin/
 Tests/Test.CavernUnity/obj/
 Tests/TestResults/
 packages/
+*/.DS_Store
+.DS_Store

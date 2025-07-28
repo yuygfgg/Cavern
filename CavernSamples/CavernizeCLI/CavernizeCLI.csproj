@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>disable</Nullable>
+		<Copyright>Copyright © Bence Sgánetz 2016-2025</Copyright>
+		<Description>Cross-platform CLI spatial audio processor using Cavern's renderer.</Description>
+		<ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+		<DebugType>full</DebugType>
+		<Authors>VoidX</Authors>
+		<Product>CavernizeCLI</Product>
+		<PackageProjectUrl>https://cavern.sbence.hu/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/VoidXH/Cavern/</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<NeutralLanguage>en</NeutralLanguage>
+		<AssemblyName>cavernize</AssemblyName>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<DebugType>none</DebugType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Cavern.Format\Cavern.Format.csproj" />
+		<ProjectReference Include="..\..\Cavern\Cavern.csproj" />
+		<ProjectReference Include="..\Reusable\Cavernize.Logic\Cavernize.Logic.csproj" />
+	</ItemGroup>
+
+
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="del /s /q bin\*.xml" Condition="'$(OS)' == 'Windows_NT'" />
+		<Exec Command="del /s /q bin\*.pdb" Condition="'$(Configuration)' == 'Release' And '$(OS)' == 'Windows_NT'" />
+		<Exec Command="rm -f bin/**/*.xml" Condition="'$(OS)' != 'Windows_NT'" />
+		<Exec Command="rm -f bin/**/*.pdb" Condition="'$(Configuration)' == 'Release' And '$(OS)' != 'Windows_NT'" />
+	</Target>
+</Project> 
