@@ -65,7 +65,8 @@ jobs:
         copy "Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll" "build/Release/Cavern_Data/Managed/Cavern.QuickEQ.dll"
         copy "Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll" "build/Release/Cavern_Data/Managed/Cavern.Format.dll"
         copy "Cavern.QuickEQ/bin/Release/CavernAmp.dll" "build/Release/Cavern_Data/Plugins/x86_64/CavernAmp.dll"
-        mkdir "build/Release/Tools"
+        New-Item -ItemType Directory -Path "build/Release/Tools/CavernizeCLI" -Force
+        New-Item -ItemType Directory -Path "build/Release/Tools/CavernizeGUI" -Force
         Copy-Item -Path "CavernSamples/CavernizeCLI/bin/Release/net8.0/*" -Destination "build/Release/Tools/CavernizeCLI/" -Recurse
         Copy-Item -Path "CavernSamples/CavernizeGUI/bin/Release/net8.0-windows/*" -Destination "build/Release/Tools/CavernizeGUI/" -Recurse
 
