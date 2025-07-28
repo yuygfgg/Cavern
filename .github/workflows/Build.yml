@@ -176,10 +176,10 @@ jobs:
       run: dotnet build Cavern.sln --configuration ${{env.BUILD_CONFIGURATION}} --no-restore
 
     - name: Build CavernizeCLI for glibc
-      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-x64 --self-contained true -p:PublishSingleFile=true
 
     - name: Build CavernizeCLI for musl
-      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-musl-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-musl-x64 --self-contained true -p:PublishSingleFile=true
 
     - name: Run tests
       continue-on-error: true
