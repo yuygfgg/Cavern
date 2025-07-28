@@ -38,8 +38,8 @@ jobs:
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{ matrix.arch }} "Cavern.sln"
-        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{ matrix.arch }} "CavernSamples/CavernSamples.sln"
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} "Cavern.sln"
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} "CavernSamples/CavernSamples.sln"
 
     - name: Build CavernizeCLI
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -161,8 +161,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [x64, arm64]
-        libc: [glibc, musl]
+        include:
+          - arch: x64
+            libc: glibc
+            runtime: linux-x64
+          - arch: arm64
+            libc: glibc
+            runtime: linux-arm64
+          - arch: x64
+            libc: musl
+            runtime: linux-musl-x64
+          - arch: arm64
+            libc: musl
+            runtime: linux-musl-arm64
 
     steps:
     - uses: actions/checkout@v3
@@ -187,7 +198,7 @@ jobs:
       run: dotnet build Cavern.sln --configuration ${{env.BUILD_CONFIGURATION}} --no-restore
 
     - name: Build CavernizeCLI
-      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-${{ matrix.libc }}-${{ matrix.arch }} --self-contained true -p:PublishSingleFile=true
+      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true
 
     - name: Run tests
       continue-on-error: true
@@ -204,7 +215,7 @@ jobs:
         cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/
         cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/
         mkdir -p build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/Tools/CavernizeCLI
-        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/linux-${{ matrix.libc }}-${{ matrix.arch }}/publish/* build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/Tools/CavernizeCLI/
+        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/${{ matrix.runtime }}/publish/* build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/Tools/CavernizeCLI/
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
