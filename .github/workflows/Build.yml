@@ -150,8 +150,102 @@ jobs:
         name: "macos-zip"
         path: "build/Cavern-macOS.zip"
 
+  Linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Get current date
+      id: date
+      run: echo "CurrentDate=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+    - name: Get commit hash
+      id: vars
+      run: echo "ShortHash=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore Cavern.sln
+
+    - name: Build
+      run: dotnet build Cavern.sln --configuration ${{env.BUILD_CONFIGURATION}} --no-restore
+
+    - name: Build CavernizeCLI for glibc
+      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+
+    - name: Build CavernizeCLI for musl
+      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-musl-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+
+    - name: Run tests
+      continue-on-error: true
+      run: |
+        dotnet test Tests/Test.Cavern/Test.Cavern.csproj --no-build --configuration Release --verbosity normal
+        dotnet test Tests/Test.Cavern.Format/Test.Cavern.Format.csproj --no-build --configuration Release --verbosity normal
+        dotnet test Tests/Test.Cavern.QuickEQ/Test.Cavern.QuickEQ.csproj --no-build --configuration Release --verbosity normal
+
+    - name: Collect glibc artifacts
+      run: |
+        mkdir -p build/Release/linux-glibc
+        cp Cavern/bin/Release/netstandard2.1/Cavern.dll build/Release/linux-glibc/
+        cp Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll build/Release/linux-glibc/
+        cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/linux-glibc/
+        cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/linux-glibc/
+        mkdir -p build/Release/linux-glibc/Tools/CavernizeCLI
+        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/linux-x64/publish/* build/Release/linux-glibc/Tools/CavernizeCLI/
+
+    - name: Collect musl artifacts
+      run: |
+        mkdir -p build/Release/linux-musl
+        cp Cavern/bin/Release/netstandard2.1/Cavern.dll build/Release/linux-musl/
+        cp Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll build/Release/linux-musl/
+        cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/linux-musl/
+        cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/linux-musl/
+        mkdir -p build/Release/linux-musl/Tools/CavernizeCLI
+        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/linux-musl-x64/publish/* build/Release/linux-musl/Tools/CavernizeCLI/
+
+    - name: Upload glibc Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: "Cavern-Linux-glibc_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
+        path: "build/Release/linux-glibc/"
+
+    - name: Upload musl Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: "Cavern-Linux-musl_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
+        path: "build/Release/linux-musl/"
+
+    - name: Compress glibc artifacts
+      uses: vimtor/action-zip@v1
+      with:
+        files: "build/Release/linux-glibc/"
+        dest: "build/Cavern-Linux-glibc.zip"
+
+    - name: Compress musl artifacts
+      uses: vimtor/action-zip@v1
+      with:
+        files: "build/Release/linux-musl/"
+        dest: "build/Cavern-Linux-musl.zip"
+
+    - name: Upload Linux glibc artifact for release
+      uses: actions/upload-artifact@v4
+      with:
+        name: "linux-glibc-zip"
+        path: "build/Cavern-Linux-glibc.zip"
+
+    - name: Upload Linux musl artifact for release
+      uses: actions/upload-artifact@v4
+      with:
+        name: "linux-musl-zip"
+        path: "build/Cavern-Linux-musl.zip"
+
   release:
-    needs: [Windows, macOS]
+    needs: [Windows, macOS, Linux]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
 
@@ -176,6 +270,18 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: "macos-zip"
+        path: "artifacts/"
+
+    - name: Download Linux glibc artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "linux-glibc-zip"
+        path: "artifacts/"
+
+    - name: Download Linux musl artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "linux-musl-zip"
         path: "artifacts/"
 
     - name: GitHub pre-release
