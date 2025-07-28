@@ -10,7 +10,10 @@ env:
 jobs:
   Windows:
     runs-on: windows-2022
-
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    
     steps:
     - uses: actions/checkout@v3
 
@@ -35,13 +38,13 @@ jobs:
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} "Cavern.sln"
-        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} "CavernSamples/CavernSamples.sln"
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{ matrix.arch }} "Cavern.sln"
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{ matrix.arch }} "CavernSamples/CavernSamples.sln"
 
     - name: Build CavernizeCLI
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        dotnet build "CavernSamples/CavernizeCLI/CavernizeCLI.csproj" --configuration ${{env.BUILD_CONFIGURATION}}
+        dotnet publish "CavernSamples/CavernizeCLI/CavernizeCLI.csproj" --configuration ${{env.BUILD_CONFIGURATION}} --runtime win-${{ matrix.arch }} --self-contained true -p:PublishSingleFile=true
 
     - name: Run tests
       continue-on-error: true
@@ -61,35 +64,39 @@ jobs:
     - name: Collect artifacts
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        copy "Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.dll" "build/Release/Cavern_Data/Managed/Cavern.dll"
-        copy "Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll" "build/Release/Cavern_Data/Managed/Cavern.QuickEQ.dll"
-        copy "Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll" "build/Release/Cavern_Data/Managed/Cavern.Format.dll"
-        copy "Cavern.QuickEQ/bin/Release/CavernAmp.dll" "build/Release/Cavern_Data/Plugins/x86_64/CavernAmp.dll"
-        New-Item -ItemType Directory -Path "build/Release/Tools/CavernizeCLI" -Force
-        New-Item -ItemType Directory -Path "build/Release/Tools/CavernizeGUI" -Force
-        Copy-Item -Path "CavernSamples/CavernizeCLI/bin/Release/net8.0/*" -Destination "build/Release/Tools/CavernizeCLI/" -Recurse
-        Copy-Item -Path "CavernSamples/CavernizeGUI/bin/Release/net8.0-windows/*" -Destination "build/Release/Tools/CavernizeGUI/" -Recurse
+        New-Item -ItemType Directory -Path "build/Release/win-${{ matrix.arch }}" -Force
+        copy "Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.dll" "build/Release/win-${{ matrix.arch }}/Cavern.dll"
+        copy "Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll" "build/Release/win-${{ matrix.arch }}/Cavern.QuickEQ.dll"
+        copy "Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll" "build/Release/win-${{ matrix.arch }}/Cavern.Format.dll"
+        copy "Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll" "build/Release/win-${{ matrix.arch }}/Cavern.QuickEQ.Format.dll"
+        New-Item -ItemType Directory -Path "build/Release/win-${{ matrix.arch }}/Tools/CavernizeCLI" -Force
+        New-Item -ItemType Directory -Path "build/Release/win-${{ matrix.arch }}/Tools/CavernizeGUI" -Force
+        Copy-Item -Path "CavernSamples/CavernizeCLI/bin/Release/net8.0/win-${{ matrix.arch }}/publish/*" -Destination "build/Release/win-${{ matrix.arch }}/Tools/CavernizeCLI/" -Recurse
+        Copy-Item -Path "CavernSamples/CavernizeGUI/bin/Release/net8.0-windows/*" -Destination "build/Release/win-${{ matrix.arch }}/Tools/CavernizeGUI/" -Recurse
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: "Cavern-Win64_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
-        path: "build/Release/"
+        name: "Cavern-Win-${{ matrix.arch }}_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
+        path: "build/Release/win-${{ matrix.arch }}/"
 
     - name: Compress artifacts
       uses: vimtor/action-zip@v1
       with:
-        files: "build/Release/"
-        dest: "build/Cavern-Win64.zip"
+        files: "build/Release/win-${{ matrix.arch }}/"
+        dest: "build/Cavern-Win-${{ matrix.arch }}.zip"
 
     - name: Upload Windows artifact for release
       uses: actions/upload-artifact@v4
       with:
-        name: "windows-zip"
-        path: "build/Cavern-Win64.zip"
+        name: "windows-${{ matrix.arch }}-zip"
+        path: "build/Cavern-Win-${{ matrix.arch }}.zip"
 
   macOS:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
 
     steps:
     - uses: actions/checkout@v3
@@ -114,7 +121,7 @@ jobs:
       run: dotnet build Cavern.sln --configuration ${{env.BUILD_CONFIGURATION}} --no-restore
 
     - name: Build CavernizeCLI
-      run: dotnet build CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}}
+      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime osx-${{ matrix.arch }} --self-contained true -p:PublishSingleFile=true
 
     - name: Run tests
       continue-on-error: true
@@ -125,33 +132,37 @@ jobs:
 
     - name: Collect artifacts
       run: |
-        mkdir -p build/Release/macOS
-        cp Cavern/bin/Release/netstandard2.1/Cavern.dll build/Release/macOS/
-        cp Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll build/Release/macOS/
-        cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/macOS/
-        cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/macOS/
-        mkdir -p build/Release/macOS/Tools
-        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0 build/Release/macOS/Tools/CavernizeCLI/
+        mkdir -p build/Release/osx-${{ matrix.arch }}
+        cp Cavern/bin/Release/netstandard2.1/Cavern.dll build/Release/osx-${{ matrix.arch }}/
+        cp Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll build/Release/osx-${{ matrix.arch }}/
+        cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/osx-${{ matrix.arch }}/
+        cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/osx-${{ matrix.arch }}/
+        mkdir -p build/Release/osx-${{ matrix.arch }}/Tools
+        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/osx-${{ matrix.arch }}/publish build/Release/osx-${{ matrix.arch }}/Tools/CavernizeCLI/
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: "Cavern-macOS_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
-        path: "build/Release/macOS/"
+        name: "Cavern-macOS-${{ matrix.arch }}_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
+        path: "build/Release/osx-${{ matrix.arch }}/"
 
     - name: Compress artifacts
       run: |
         cd build/Release
-        zip -r ../Cavern-macOS.zip macOS/
+        zip -r ../Cavern-macOS-${{ matrix.arch }}.zip osx-${{ matrix.arch }}/
 
     - name: Upload macOS artifact for release
       uses: actions/upload-artifact@v4
       with:
-        name: "macos-zip"
-        path: "build/Cavern-macOS.zip"
+        name: "macos-${{ matrix.arch }}-zip"
+        path: "build/Cavern-macOS-${{ matrix.arch }}.zip"
 
   Linux:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+        libc: [glibc, musl]
 
     steps:
     - uses: actions/checkout@v3
@@ -175,11 +186,8 @@ jobs:
     - name: Build
       run: dotnet build Cavern.sln --configuration ${{env.BUILD_CONFIGURATION}} --no-restore
 
-    - name: Build CavernizeCLI for glibc
-      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-x64 --self-contained true -p:PublishSingleFile=true
-
-    - name: Build CavernizeCLI for musl
-      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-musl-x64 --self-contained true -p:PublishSingleFile=true
+    - name: Build CavernizeCLI
+      run: dotnet publish CavernSamples/CavernizeCLI/CavernizeCLI.csproj --configuration ${{env.BUILD_CONFIGURATION}} --runtime linux-${{ matrix.libc }}-${{ matrix.arch }} --self-contained true -p:PublishSingleFile=true
 
     - name: Run tests
       continue-on-error: true
@@ -188,61 +196,33 @@ jobs:
         dotnet test Tests/Test.Cavern.Format/Test.Cavern.Format.csproj --no-build --configuration Release --verbosity normal
         dotnet test Tests/Test.Cavern.QuickEQ/Test.Cavern.QuickEQ.csproj --no-build --configuration Release --verbosity normal
 
-    - name: Collect glibc artifacts
+    - name: Collect artifacts
       run: |
-        mkdir -p build/Release/linux-glibc
-        cp Cavern/bin/Release/netstandard2.1/Cavern.dll build/Release/linux-glibc/
-        cp Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll build/Release/linux-glibc/
-        cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/linux-glibc/
-        cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/linux-glibc/
-        mkdir -p build/Release/linux-glibc/Tools/CavernizeCLI
-        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/linux-x64/publish/* build/Release/linux-glibc/Tools/CavernizeCLI/
+        mkdir -p build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}
+        cp Cavern/bin/Release/netstandard2.1/Cavern.dll build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/
+        cp Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/
+        cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/
+        cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/
+        mkdir -p build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/Tools/CavernizeCLI
+        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/linux-${{ matrix.libc }}-${{ matrix.arch }}/publish/* build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/Tools/CavernizeCLI/
 
-    - name: Collect musl artifacts
-      run: |
-        mkdir -p build/Release/linux-musl
-        cp Cavern/bin/Release/netstandard2.1/Cavern.dll build/Release/linux-musl/
-        cp Cavern.QuickEQ/bin/Release/netstandard2.1/Cavern.QuickEQ.dll build/Release/linux-musl/
-        cp Cavern.Format/bin/Release/netstandard2.1/Cavern.Format.dll build/Release/linux-musl/
-        cp Cavern.QuickEQ.Format/bin/Release/netstandard2.1/Cavern.QuickEQ.Format.dll build/Release/linux-musl/
-        mkdir -p build/Release/linux-musl/Tools/CavernizeCLI
-        cp -r CavernSamples/CavernizeCLI/bin/Release/net8.0/linux-musl-x64/publish/* build/Release/linux-musl/Tools/CavernizeCLI/
-
-    - name: Upload glibc Build Artifact
+    - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: "Cavern-Linux-glibc_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
-        path: "build/Release/linux-glibc/"
+        name: "Cavern-Linux-${{ matrix.libc }}-${{ matrix.arch }}_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
+        path: "build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/"
 
-    - name: Upload musl Build Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: "Cavern-Linux-musl_${{steps.date.outputs.CurrentDate}}@${{steps.vars.outputs.ShortHash}}"
-        path: "build/Release/linux-musl/"
-
-    - name: Compress glibc artifacts
+    - name: Compress artifacts
       uses: vimtor/action-zip@v1
       with:
-        files: "build/Release/linux-glibc/"
-        dest: "build/Cavern-Linux-glibc.zip"
+        files: "build/Release/linux-${{ matrix.libc }}-${{ matrix.arch }}/"
+        dest: "build/Cavern-Linux-${{ matrix.libc }}-${{ matrix.arch }}.zip"
 
-    - name: Compress musl artifacts
-      uses: vimtor/action-zip@v1
-      with:
-        files: "build/Release/linux-musl/"
-        dest: "build/Cavern-Linux-musl.zip"
-
-    - name: Upload Linux glibc artifact for release
+    - name: Upload Linux artifact for release
       uses: actions/upload-artifact@v4
       with:
-        name: "linux-glibc-zip"
-        path: "build/Cavern-Linux-glibc.zip"
-
-    - name: Upload Linux musl artifact for release
-      uses: actions/upload-artifact@v4
-      with:
-        name: "linux-musl-zip"
-        path: "build/Cavern-Linux-musl.zip"
+        name: "linux-${{ matrix.libc }}-${{ matrix.arch }}-zip"
+        path: "build/Cavern-Linux-${{ matrix.libc }}-${{ matrix.arch }}.zip"
 
   release:
     needs: [Windows, macOS, Linux]
@@ -260,28 +240,52 @@ jobs:
       id: vars
       run: echo "ShortHash=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
 
-    - name: Download Windows artifact
+    - name: Download Windows x64 artifact
       uses: actions/download-artifact@v4
       with:
-        name: "windows-zip"
+        name: "windows-x64-zip"
         path: "artifacts/"
 
-    - name: Download macOS artifact
+    - name: Download Windows arm64 artifact
       uses: actions/download-artifact@v4
       with:
-        name: "macos-zip"
+        name: "windows-arm64-zip"
         path: "artifacts/"
 
-    - name: Download Linux glibc artifact
+    - name: Download macOS x64 artifact
       uses: actions/download-artifact@v4
       with:
-        name: "linux-glibc-zip"
+        name: "macos-x64-zip"
         path: "artifacts/"
 
-    - name: Download Linux musl artifact
+    - name: Download macOS arm64 artifact
       uses: actions/download-artifact@v4
       with:
-        name: "linux-musl-zip"
+        name: "macos-arm64-zip"
+        path: "artifacts/"
+
+    - name: Download Linux glibc x64 artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "linux-glibc-x64-zip"
+        path: "artifacts/"
+
+    - name: Download Linux glibc arm64 artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "linux-glibc-arm64-zip"
+        path: "artifacts/"
+
+    - name: Download Linux musl x64 artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "linux-musl-x64-zip"
+        path: "artifacts/"
+
+    - name: Download Linux musl arm64 artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "linux-musl-arm64-zip"
         path: "artifacts/"
 
     - name: GitHub pre-release
@@ -290,5 +294,5 @@ jobs:
         repo_token: "${{secrets.GITHUB_TOKEN}}"
         automatic_release_tag: "latest"
         prerelease: true
-        title: "Cavern @${{steps.vars.outputs.ShortHash}}[${{steps.date.outputs.CurrentDate}}]"
+        title: "Cavern @${{steps.vars.outputs.ShortHash}}[${{steps.date.outputs.CurrentDate}}] - Multi-Architecture"
         files: "artifacts/*.zip"
