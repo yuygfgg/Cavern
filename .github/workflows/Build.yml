@@ -82,14 +82,11 @@ jobs:
         files: "build/Release/"
         dest: "build/Cavern-Win64.zip"
 
-    - name: GitHub pre-release
-      uses: "marvinpinto/action-automatic-releases@latest"
+    - name: Upload Windows artifact for release
+      uses: actions/upload-artifact@v4
       with:
-        repo_token: "${{secrets.GITHUB_TOKEN}}"
-        automatic_release_tag: "latest"
-        prerelease: true
-        title: "Cavern @${{steps.vars.outputs.ShortHash}}[${{steps.date.outputs.CurrentDate}}]"
-        files: "build/*.zip"
+        name: "windows-zip"
+        path: "build/Cavern-Win64.zip"
 
   macOS:
     runs-on: macos-latest
@@ -147,6 +144,40 @@ jobs:
         cd build/Release
         zip -r ../Cavern-macOS.zip macOS/
 
+    - name: Upload macOS artifact for release
+      uses: actions/upload-artifact@v4
+      with:
+        name: "macos-zip"
+        path: "build/Cavern-macOS.zip"
+
+  release:
+    needs: [Windows, macOS]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Get current date
+      id: date
+      run: echo "CurrentDate=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+    - name: Get commit hash
+      id: vars
+      run: echo "ShortHash=$(git rev-parse --short=7 HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "windows-zip"
+        path: "artifacts/"
+
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: "macos-zip"
+        path: "artifacts/"
+
     - name: GitHub pre-release
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
@@ -154,4 +185,4 @@ jobs:
         automatic_release_tag: "latest"
         prerelease: true
         title: "Cavern @${{steps.vars.outputs.ShortHash}}[${{steps.date.outputs.CurrentDate}}]"
-        files: "build/*.zip"
+        files: "artifacts/*.zip"
