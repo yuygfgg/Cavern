@@ -15,6 +15,11 @@ namespace Cavern.Format {
         public ContainerReader Source => track.Source;
 
         /// <summary>
+        /// The referenced track from a container.
+        /// </summary>
+        public readonly Track track;
+
+        /// <summary>
         /// Decoder based on the <see cref="Codec"/> of the selected stream.
         /// </summary>
         Decoder decoder;
@@ -24,11 +29,6 @@ namespace Cavern.Format {
         /// the container is disposed with this track.
         /// </summary>
         readonly bool disposeSource;
-
-        /// <summary>
-        /// The referenced track from a container.
-        /// </summary>
-        readonly Track track;
 
         /// <summary>
         /// Reads an audio track from a container.
@@ -55,6 +55,9 @@ namespace Cavern.Format {
             Bits = info.Bits;
 
             switch (track.Format) {
+                case Codec.TrueHD:
+                    decoder = new MeridianLosslessPackingDecoder(new BlockBuffer<byte>(track.ReadNextBlock));
+                    break;
                 case Codec.AC3:
                 case Codec.EnhancedAC3:
                     decoder = new EnhancedAC3Decoder(new BlockBuffer<byte>(track.ReadNextBlock));
@@ -77,11 +80,14 @@ namespace Cavern.Format {
             if (decoder == null) {
                 ReadHeader();
             }
-            if (decoder is RIFFWaveDecoder wav) {
-                return new RIFFWaveRenderer(wav);
+            if (decoder is MeridianLosslessPackingDecoder mlp) {
+                return new MeridianLosslessPackingRenderer(mlp);
             }
             if (decoder is EnhancedAC3Decoder eac3) {
                 return new EnhancedAC3Renderer(eac3);
+            }
+            if (decoder is RIFFWaveDecoder wav) {
+                return new RIFFWaveRenderer(wav);
             }
             if (decoder is DummyDecoder dummy) {
                 return new DummyRenderer(dummy);
