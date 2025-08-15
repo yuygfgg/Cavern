@@ -15,8 +15,6 @@ using Cavern.Virtualizer;
 using Cavern.WPF;
 
 using Cavernize.Logic;
-using Cavernize.Logic.External;
-using Cavernize.Logic.Language;
 using Cavernize.Logic.Models;
 using Cavernize.Logic.Models.RenderTargets;
 using Cavernize.Logic.Rendering;
@@ -243,31 +241,28 @@ namespace CavernizeGUI {
         }
 
         /// <summary>
+        /// Create an external converter if it's needed for rendering a specific track.
+        /// </summary>
+        ExternalConverterHandler CreateExternalHandler(CavernizeTrack target) {
+            LicenceWindow licenceWindow = Dispatcher.Invoke(() => new LicenceWindow());
+            ExternalConverterHandler external = new(target, Consts.Language.GetExternalConverterStrings(), licenceWindow,
+                taskEngine.UpdateProgressBar, taskEngine.UpdateStatus, Dispatcher.Invoke);
+            external.Attach(listener, new DynamicUpmixingSettings());
+            return external;
+        }
+
+        /// <summary>
         /// Render the content and export it to a channel-based format.
         /// </summary>
         void RenderTask(CavernizeTrack target, AudioWriter writer, bool dynamicOnly, bool heightOnly, string finalName) {
-            RenderTarget renderTargetRef = null;
-            Dispatcher.Invoke(() => renderTargetRef = (RenderTarget)renderTarget.SelectedItem);
-
-            ExternalConverter external = null;
-            if (target.Codec == Codec.TrueHD) { // Use truehdd if needed
-                external = new Truehdd(Consts.Language.GetExternalConverterStrings());
-            }
-            if (external != null) {
-                taskEngine.Progress = -1;
-                external.UpdateStatus += taskEngine.UpdateStatus;
-                Dispatcher.Invoke(() => {
-                    external.LicenceDisplay = new LicenceWindow();
-                    external.PrepareOnUI();
-                });
-
-                target = external.Convert(target);
-                listener.DetachAllSources();
-                target.Attach(listener, new DynamicUpmixingSettings());
+            ExternalConverterHandler external = CreateExternalHandler(target);
+            if (external.Failed) {
+                return;
             }
 
             taskEngine.Progress = 0;
             taskEngine.UpdateStatus((string)language["Start"]);
+            RenderTarget renderTargetRef = Dispatcher.Invoke(() => (RenderTarget)renderTarget.SelectedItem);
             RenderStats stats = WriteRender(target, writer, renderTargetRef, dynamicOnly, heightOnly);
             report.Generate(stats);
 
@@ -284,12 +279,12 @@ namespace CavernizeGUI {
                 }
                 if (!merger.Merge(ffmpeg, finalName)) {
                     taskEngine.UpdateStatus("Failed to create the final file. Are your permissions sufficient in the export folder?");
-                    external?.Cleanup();
+                    external.Dispose();
                     return;
                 }
             }
 
-            external?.Cleanup();
+            external.Dispose();
             FinishTask(target);
         }
 
@@ -297,6 +292,11 @@ namespace CavernizeGUI {
         /// Decode the source and export it to an object-based format.
         /// </summary>
         void TranscodeTask(CavernizeTrack target, EnvironmentWriter writer) {
+            ExternalConverterHandler external = CreateExternalHandler(target);
+            if (external.Failed) {
+                return;
+            }
+
             taskEngine.Progress = 0;
             taskEngine.UpdateStatus((string)language["Start"]);
 
@@ -307,6 +307,7 @@ namespace CavernizeGUI {
                 stats = WriteTranscode(target, writer);
             }
             report.Generate(stats);
+            external.Dispose();
             FinishTask(target);
         }
 
